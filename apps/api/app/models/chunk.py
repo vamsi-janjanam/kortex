@@ -35,9 +35,9 @@ class Chunk(Base):
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     document: Mapped["Document"] = relationship("Document", back_populates="chunks")  # noqa: F821
-    lineage: Mapped[list["LineageRecord"]] = relationship(
+    lineage: Mapped[list["LineageRecord"]] = relationship(  # noqa: F821
         "LineageRecord", back_populates="chunk"
-    )  # noqa: F821
+    )
     conflicts_as_a: Mapped[list["Conflict"]] = relationship(  # noqa: F821
         "Conflict", foreign_keys="Conflict.chunk_a_id", back_populates="chunk_a"
     )

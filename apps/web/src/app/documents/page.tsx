@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FileText, Plus, ExternalLink } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { api, type Document } from "@/lib/api";
 
 export default function DocumentsPage() {
