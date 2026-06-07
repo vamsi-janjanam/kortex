@@ -1,5 +1,4 @@
 import uuid
-from pathlib import Path
 
 from app.celery_app import celery_app
 from app.config import settings

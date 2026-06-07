@@ -1,7 +1,6 @@
 import redis as redis_client
 from fastapi import APIRouter
 from qdrant_client import QdrantClient
-from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.config import settings
 from app.database import check_db
