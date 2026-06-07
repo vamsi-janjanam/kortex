@@ -22,12 +22,22 @@ class RelationshipType(str, Enum):
 class EntityRelationship(Base):
     __tablename__ = "entity_relationships"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    from_entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=False)
-    to_entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=False)
-    rel_type: Mapped[str] = mapped_column(String(50), nullable=False, default=RelationshipType.OTHER)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    from_entity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("entities.id"), nullable=False
+    )
+    to_entity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("entities.id"), nullable=False
+    )
+    rel_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default=RelationshipType.OTHER
+    )
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     from_entity: Mapped["Entity"] = relationship(  # noqa: F821
         "Entity", foreign_keys=[from_entity_id], back_populates="outgoing_relationships"

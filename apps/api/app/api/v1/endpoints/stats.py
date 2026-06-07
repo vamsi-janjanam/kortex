@@ -28,9 +28,13 @@ def get_stats(db: Session = Depends(get_db)):
     ).scalar_one()
 
     if chunk_count > 0:
-        avg_freshness = db.execute(select(func.avg(Chunk.freshness_score))).scalar_one() or 0.0
+        avg_freshness = (
+            db.execute(select(func.avg(Chunk.freshness_score))).scalar_one() or 0.0
+        )
         avg_trust = db.execute(select(func.avg(Chunk.trust_score))).scalar_one() or 0.0
-        avg_conflict_risk = db.execute(select(func.avg(Chunk.conflict_risk))).scalar_one() or 0.0
+        avg_conflict_risk = (
+            db.execute(select(func.avg(Chunk.conflict_risk))).scalar_one() or 0.0
+        )
     else:
         avg_freshness = avg_trust = avg_conflict_risk = 0.0
 

@@ -20,12 +20,15 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
 
         if source_type == SourceType.PDF:
             from pipelines.ingestion.pdf import PDFConnector
+
             connector = PDFConnector()
         elif source_type in (SourceType.MARKDOWN, SourceType.GITHUB):
             from pipelines.ingestion.markdown import MarkdownConnector
+
             connector = MarkdownConnector()
         else:
             from pipelines.ingestion.markdown import MarkdownConnector
+
             connector = MarkdownConnector()
 
         raw_chunks = connector.ingest(source)
@@ -45,7 +48,9 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
 
         # Batch embed all chunks
         texts = [c["text"] for c in raw_chunks]
-        embedding_resp = oai.embeddings.create(model=settings.embedding_model, input=texts)
+        embedding_resp = oai.embeddings.create(
+            model=settings.embedding_model, input=texts
+        )
         embeddings = [e.embedding for e in embedding_resp.data]
 
         points = []
@@ -77,11 +82,17 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
             )
             db.add(lineage)
 
-            points.append(PointStruct(
-                id=embedding_id,
-                vector=embedding,
-                payload={"chunk_id": str(chunk_id), "document_id": str(doc.id), "text": raw_chunk["text"][:200]},
-            ))
+            points.append(
+                PointStruct(
+                    id=embedding_id,
+                    vector=embedding,
+                    payload={
+                        "chunk_id": str(chunk_id),
+                        "document_id": str(doc.id),
+                        "text": raw_chunk["text"][:200],
+                    },
+                )
+            )
             chunk_records.append(chunk)
 
         qc.upsert(collection_name=settings.qdrant_collection, points=points)

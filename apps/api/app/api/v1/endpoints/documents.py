@@ -39,14 +39,16 @@ def list_documents(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)
         chunk_count = db.execute(
             select(func.count()).where(Chunk.document_id == doc.id)
         ).scalar_one()
-        result.append(DocumentResponse(
-            id=doc.id,
-            source_type=doc.source_type,
-            source_url=doc.source_url,
-            title=doc.title,
-            ingested_at=doc.ingested_at,
-            chunk_count=chunk_count,
-        ))
+        result.append(
+            DocumentResponse(
+                id=doc.id,
+                source_type=doc.source_type,
+                source_url=doc.source_url,
+                title=doc.title,
+                ingested_at=doc.ingested_at,
+                chunk_count=chunk_count,
+            )
+        )
     return result
 
 
@@ -64,6 +66,7 @@ def create_document(payload: DocumentCreate, db: Session = Depends(get_db)):
 
     if payload.trigger_ingest:
         from app.tasks.ingestion import ingest_document_task
+
         ingest_document_task.delay(str(doc.id))
 
     return DocumentResponse(

@@ -24,7 +24,9 @@ def _ensure_qdrant_collection():
         if settings.qdrant_collection not in collections:
             qc.create_collection(
                 collection_name=settings.qdrant_collection,
-                vectors_config=VectorParams(size=settings.embedding_dim, distance=Distance.COSINE),
+                vectors_config=VectorParams(
+                    size=settings.embedding_dim, distance=Distance.COSINE
+                ),
             )
     except Exception as e:
         print(f"[startup] Qdrant collection setup skipped: {e}")

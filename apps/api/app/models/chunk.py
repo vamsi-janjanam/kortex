@@ -11,8 +11,12 @@ from app.models.base import Base
 class Chunk(Base):
     __tablename__ = "chunks"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=False
+    )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
@@ -25,11 +29,15 @@ class Chunk(Base):
     completeness_score: Mapped[float] = mapped_column(Float, default=1.0)
     conflict_risk: Mapped[float] = mapped_column(Float, default=0.0)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     document: Mapped["Document"] = relationship("Document", back_populates="chunks")  # noqa: F821
-    lineage: Mapped[list["LineageRecord"]] = relationship("LineageRecord", back_populates="chunk")  # noqa: F821
+    lineage: Mapped[list["LineageRecord"]] = relationship(
+        "LineageRecord", back_populates="chunk"
+    )  # noqa: F821
     conflicts_as_a: Mapped[list["Conflict"]] = relationship(  # noqa: F821
         "Conflict", foreign_keys="Conflict.chunk_a_id", back_populates="chunk_a"
     )

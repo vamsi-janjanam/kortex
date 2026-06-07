@@ -22,7 +22,9 @@ def rescore_all_chunks_task():
             doc = db.get(Document, chunk.document_id)
             if not doc:
                 continue
-            chunk.freshness_score = freshness_scorer.score(doc.ingested_at, doc.source_type)
+            chunk.freshness_score = freshness_scorer.score(
+                doc.ingested_at, doc.source_type
+            )
             chunk.trust_score = trust_scorer.score(doc.source_type)
             updated += 1
 

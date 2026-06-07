@@ -44,7 +44,9 @@ def search(payload: SearchRequest, db: Session = Depends(get_db)):
         )
         query_vector = embedding_response.data[0].embedding
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Embedding service unavailable: {e}") from e
+        raise HTTPException(
+            status_code=503, detail=f"Embedding service unavailable: {e}"
+        ) from e
 
     try:
         qc = QdrantClient(url=settings.qdrant_url)
@@ -54,7 +56,9 @@ def search(payload: SearchRequest, db: Session = Depends(get_db)):
             limit=payload.top_k * 3,  # oversample for post-filtering
         )
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Vector search unavailable: {e}") from e
+        raise HTTPException(
+            status_code=503, detail=f"Vector search unavailable: {e}"
+        ) from e
 
     results = []
     for hit in hits:
@@ -77,18 +81,20 @@ def search(payload: SearchRequest, db: Session = Depends(get_db)):
         if payload.source_types and doc.source_type not in payload.source_types:
             continue
 
-        results.append(SearchResult(
-            chunk_id=chunk.id,
-            text=chunk.text,
-            score=hit.score,
-            freshness_score=chunk.freshness_score,
-            trust_score=chunk.trust_score,
-            conflict_risk=chunk.conflict_risk,
-            document_id=doc.id,
-            document_title=doc.title,
-            source_type=doc.source_type,
-            source_url=doc.source_url,
-        ))
+        results.append(
+            SearchResult(
+                chunk_id=chunk.id,
+                text=chunk.text,
+                score=hit.score,
+                freshness_score=chunk.freshness_score,
+                trust_score=chunk.trust_score,
+                conflict_risk=chunk.conflict_risk,
+                document_id=doc.id,
+                document_title=doc.title,
+                source_type=doc.source_type,
+                source_url=doc.source_url,
+            )
+        )
 
         if len(results) >= payload.top_k:
             break
