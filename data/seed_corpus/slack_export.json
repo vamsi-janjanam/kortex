@@ -1,0 +1,62 @@
+[
+  {
+    "ts": "2025-03-15T09:12:00Z",
+    "user": "alice.eng",
+    "channel": "#api-questions",
+    "text": "Hey team, quick question — what auth method does the API use now? I still have old docs saying API keys."
+  },
+  {
+    "ts": "2025-03-15T09:15:00Z",
+    "user": "bob.platform",
+    "channel": "#api-questions",
+    "text": "We migrated to OAuth 2.0 with JWT tokens in v2. API keys are gone. Make sure you're using the v2 base URL: https://api.acme.io/v2"
+  },
+  {
+    "ts": "2025-03-15T09:18:00Z",
+    "user": "alice.eng",
+    "channel": "#api-questions",
+    "text": "Got it! And what's the rate limit for the Pro tier?"
+  },
+  {
+    "ts": "2025-03-15T09:20:00Z",
+    "user": "bob.platform",
+    "channel": "#api-questions",
+    "text": "Pro tier is 1,000 req/min with a burst of 5,000 requests in 30 seconds. Enterprise is 10k/min with custom burst. The old 50 req/min limit was v1 only."
+  },
+  {
+    "ts": "2025-03-20T14:30:00Z",
+    "user": "charlie.qa",
+    "channel": "#api-questions",
+    "text": "Are PDFs supported for document upload? The v1 docs say no."
+  },
+  {
+    "ts": "2025-03-20T14:32:00Z",
+    "user": "diana.search",
+    "channel": "#api-questions",
+    "text": "Yes! v2 supports PDF, Markdown, HTML, and plain text. The Document Service uses Docling for PDF extraction."
+  },
+  {
+    "ts": "2025-04-01T11:00:00Z",
+    "user": "eve.security",
+    "channel": "#platform-eng",
+    "text": "Reminder: all services must validate JWT signatures using the Keycloak JWKS endpoint. Do NOT do local key validation."
+  },
+  {
+    "ts": "2025-04-01T11:05:00Z",
+    "user": "frank.backend",
+    "channel": "#platform-eng",
+    "text": "Confirmed, we're hitting https://auth.acme.io/realms/acme/protocol/openid-connect/certs for all validation."
+  },
+  {
+    "ts": "2025-04-10T16:00:00Z",
+    "user": "grace.product",
+    "channel": "#api-questions",
+    "text": "How long are documents retained? A customer asked."
+  },
+  {
+    "ts": "2025-04-10T16:03:00Z",
+    "user": "bob.platform",
+    "channel": "#api-questions",
+    "text": "7 years by default for compliance. v1 was 30 days but that's deprecated. Customers can configure shorter retention in workspace settings if needed."
+  }
+]

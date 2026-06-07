@@ -1,0 +1,212 @@
+[
+  {
+    "id": "q001",
+    "question": "What authentication method does the Acme API use?",
+    "reference_answer": "The Acme API v2 uses OAuth 2.0 with JWT bearer tokens. API key authentication from v1 is no longer supported.",
+    "has_seeded_conflict": true,
+    "notes": "v1 says API keys, v2 says OAuth 2.0 — raw retrieval may return the stale v1 answer"
+  },
+  {
+    "id": "q002",
+    "question": "What is the rate limit for the Pro tier?",
+    "reference_answer": "The Pro tier supports 1,000 requests per minute with a burst of 5,000 requests in 30 seconds.",
+    "has_seeded_conflict": true,
+    "notes": "v1 says 50 req/min for all tiers; v2 says 1,000 req/min for Pro"
+  },
+  {
+    "id": "q003",
+    "question": "Does the API support PDF document uploads?",
+    "reference_answer": "Yes, PDF is supported in API v2. The supported formats are text, HTML, PDF, and markdown.",
+    "has_seeded_conflict": true,
+    "notes": "v1 explicitly says PDF is not supported; v2 adds PDF support"
+  },
+  {
+    "id": "q004",
+    "question": "How long are documents retained by default?",
+    "reference_answer": "Documents are retained for 7 years by default to meet compliance requirements. Shorter retention can be configured per workspace.",
+    "has_seeded_conflict": true,
+    "notes": "v1 says 30 days; v2 says 7 years"
+  },
+  {
+    "id": "q005",
+    "question": "What search modes are available in the API?",
+    "reference_answer": "The v2 API supports hybrid search combining semantic (vector) and keyword (BM25) retrieval. The recommended mode is hybrid.",
+    "has_seeded_conflict": true,
+    "notes": "v1 only has keyword search; v2 adds semantic and hybrid"
+  },
+  {
+    "id": "q006",
+    "question": "What is the base URL for the current API?",
+    "reference_answer": "The current API base URL is https://api.acme.io/v2",
+    "has_seeded_conflict": false,
+    "notes": "Direct factual lookup"
+  },
+  {
+    "id": "q007",
+    "question": "Which cloud provider does Acme use for hosting?",
+    "reference_answer": "Acme uses AWS, with us-east-1 as the primary region and eu-west-1 for disaster recovery.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q008",
+    "question": "What vector database does Acme use for search?",
+    "reference_answer": "Acme uses Qdrant (self-hosted on AWS EKS) as its vector store for semantic search embeddings.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q009",
+    "question": "How long do access tokens last?",
+    "reference_answer": "JWT access tokens expire after 1 hour. They should be refreshed using client credentials before expiry.",
+    "has_seeded_conflict": false,
+    "notes": "From v2 auth docs and architecture guide"
+  },
+  {
+    "id": "q010",
+    "question": "What is the uptime SLA for the API Gateway?",
+    "reference_answer": "The API Gateway has a 99.99% uptime SLA with a recovery time of under 1 minute.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q011",
+    "question": "Which team is responsible for the Search Service?",
+    "reference_answer": "The Search Service is owned by the AI Platform team, with the ai-platform-oncall rotation handling incidents.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q012",
+    "question": "Does the API support webhooks?",
+    "reference_answer": "Yes, v2 adds webhook support for real-time event notifications. Webhooks can be configured at Settings > Webhooks.",
+    "has_seeded_conflict": false,
+    "notes": "v2-only feature"
+  },
+  {
+    "id": "q013",
+    "question": "What MFA methods does Acme support?",
+    "reference_answer": "Acme's Auth Service supports MFA via TOTP (time-based one-time passwords) and WebAuthn.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q014",
+    "question": "Is the Acme API GDPR compliant?",
+    "reference_answer": "Yes, Acme is both GDPR and HIPAA compliant, and holds SOC 2 Type II certification.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q015",
+    "question": "What SDKs are officially supported?",
+    "reference_answer": "Official SDKs are available for Python, JavaScript/TypeScript, Go, and Java. Community SDKs exist for Ruby, PHP, and Rust.",
+    "has_seeded_conflict": true,
+    "notes": "v1 says Python only; v2 has 4 official SDKs"
+  },
+  {
+    "id": "q016",
+    "question": "What happens when I exceed the rate limit?",
+    "reference_answer": "Exceeding the rate limit returns HTTP 429. In v2, the response includes a Retry-After header indicating when to retry.",
+    "has_seeded_conflict": false,
+    "notes": "Both docs mention 429 but v2 adds Retry-After"
+  },
+  {
+    "id": "q017",
+    "question": "How does pagination work in the users endpoint?",
+    "reference_answer": "The GET /users endpoint uses cursor-based pagination. The response includes a next_cursor field to retrieve the next page.",
+    "has_seeded_conflict": false,
+    "notes": "v2 feature"
+  },
+  {
+    "id": "q018",
+    "question": "What embedding model does Acme use for search?",
+    "reference_answer": "Acme uses OpenAI text-embedding-3-large for generating document embeddings stored in Qdrant.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q019",
+    "question": "What format does the API return error responses in?",
+    "reference_answer": "Errors return JSON with fields: error (message), code (ERROR_CODE), details (field-level reasons), and request_id. All fields are always present in v2.",
+    "has_seeded_conflict": true,
+    "notes": "v1 does not have details or request_id fields"
+  },
+  {
+    "id": "q020",
+    "question": "What is the support email and response SLA?",
+    "reference_answer": "Support email is support@acme.io. SLA: 4 hours for Pro tier, 1 hour for Enterprise tier.",
+    "has_seeded_conflict": false,
+    "notes": "From v2 docs"
+  },
+  {
+    "id": "q021",
+    "question": "What event streaming system does Acme use?",
+    "reference_answer": "Acme uses Apache Kafka for async event processing and streaming.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q022",
+    "question": "How is customer data isolated?",
+    "reference_answer": "Customer data is isolated using row-level security in PostgreSQL, ensuring tenant data separation.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q023",
+    "question": "What CI/CD pipeline does Acme use?",
+    "reference_answer": "Acme uses GitHub Actions for CI, builds container images to ECR, and deploys via ArgoCD.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q024",
+    "question": "How do I get access to document chunks for RAG?",
+    "reference_answer": "Use the GET /documents/{id}/chunks endpoint to retrieve chunked representations of a document for RAG use cases.",
+    "has_seeded_conflict": false,
+    "notes": "v2-only endpoint"
+  },
+  {
+    "id": "q025",
+    "question": "What databases does Acme use?",
+    "reference_answer": "Acme uses PostgreSQL 16 as the primary database, Redis 7 for caching, AWS S3 for object storage, Qdrant for vector search, and Elasticsearch for full-text keyword search.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q026",
+    "question": "Does the Acme API support SAML SSO?",
+    "reference_answer": "Yes, the Auth Service supports SAML 2.0 SSO for enterprise customers.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q027",
+    "question": "How are JWT tokens validated?",
+    "reference_answer": "JWT tokens must be validated using the Keycloak JWKS endpoint at https://auth.acme.io/realms/acme/protocol/openid-connect/certs. Local key validation is not permitted.",
+    "has_seeded_conflict": false,
+    "notes": "From Slack export"
+  },
+  {
+    "id": "q028",
+    "question": "What monitoring tools does Acme use?",
+    "reference_answer": "Acme uses Datadog for metrics, logs, and traces, and PagerDuty for incident management.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q029",
+    "question": "What encryption standards does Acme use?",
+    "reference_answer": "All data is encrypted at rest using AES-256 and in transit using TLS 1.3.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  },
+  {
+    "id": "q030",
+    "question": "What container orchestration does Acme use?",
+    "reference_answer": "Acme uses Kubernetes via AWS EKS (Elastic Kubernetes Service) for container orchestration.",
+    "has_seeded_conflict": false,
+    "notes": "From architecture guide"
+  }
+]
