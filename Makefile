@@ -1,4 +1,7 @@
-.PHONY: up down logs migrate seed eval test lint format install-api install-web
+.PHONY: up down logs migrate seed eval test lint format install-api install-web run
+
+run:
+	./dev.sh
 
 up:
 	docker compose up -d
