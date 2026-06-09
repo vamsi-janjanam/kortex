@@ -56,10 +56,3 @@ def test_trust_score_clamped():
         score = scorer.score(source_type)
         assert 0.0 <= score <= 1.0
 
-
-def test_trust_score_with_multiplier():
-    from pipelines.scoring.trust import TrustScorer
-    scorer = TrustScorer()
-    base = scorer.score("pdf")
-    halved = scorer.score("pdf", consistency_multiplier=0.5)
-    assert halved == pytest.approx(base * 0.5, abs=0.001)

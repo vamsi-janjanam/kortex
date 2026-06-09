@@ -1,5 +1,4 @@
 """Integration test: API health endpoint."""
-import os
 import sys
 from pathlib import Path
 
