@@ -41,6 +41,45 @@ export interface SearchResult {
   source_url: string;
 }
 
+export interface ConflictTrendPoint {
+  date: string;
+  detected: number;
+  closed: number;
+}
+export interface ConflictTrendResponse {
+  days: number;
+  data: ConflictTrendPoint[];
+}
+
+export interface QualityBySource {
+  source_type: string;
+  chunk_count: number;
+  avg_freshness_score: number;
+  avg_trust_score: number;
+  avg_conflict_risk: number;
+}
+export interface QualityBySourceResponse {
+  data: QualityBySource[];
+}
+
+export interface DistributionBucket {
+  bucket: string;
+  count: number;
+}
+export interface QualityDistributionResponse {
+  freshness: DistributionBucket[];
+  trust: DistributionBucket[];
+}
+
+export interface StalenessByAgeBucket {
+  age_bucket: string;
+  chunk_count: number;
+  avg_freshness_score: number;
+}
+export interface StalenessByAgeResponse {
+  data: StalenessByAgeBucket[];
+}
+
 export const api = {
   getStats: () => apiFetch<KnowledgeStats>("/api/v1/stats"),
   getDocuments: (skip = 0, limit = 50) =>
@@ -53,4 +92,10 @@ export const api = {
       body: JSON.stringify({ query, top_k: 8, min_freshness: minFreshness, max_conflict_risk: maxConflictRisk }),
     }),
   getHealth: () => apiFetch<{ status: string; checks: Record<string, string> }>("/health"),
+  getConflictTrend: (days = 30) =>
+    apiFetch<ConflictTrendResponse>(`/api/v1/stats/conflicts/trend?days=${days}`),
+  getQualityBySource: () => apiFetch<QualityBySourceResponse>("/api/v1/stats/quality/by-source"),
+  getQualityDistribution: () =>
+    apiFetch<QualityDistributionResponse>("/api/v1/stats/quality/distribution"),
+  getStalenessByAge: () => apiFetch<StalenessByAgeResponse>("/api/v1/stats/staleness/by-age"),
 };
