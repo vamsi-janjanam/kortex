@@ -108,6 +108,30 @@ export interface GraphResponse {
   edges: GraphEdge[];
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatSource {
+  chunk_id: string;
+  text: string;
+  score: number;
+  freshness_score: number;
+  trust_score: number;
+  conflict_risk: number;
+  hallucination_risk: number;
+  document_id: string;
+  document_title: string | null;
+  source_type: string;
+  source_url: string;
+}
+
+export interface ChatResponse {
+  answer: string;
+  sources: ChatSource[];
+}
+
 export const api = {
   getStats: () => apiFetch<KnowledgeStats>("/api/v1/stats"),
   getDocuments: (skip = 0, limit = 50) =>
@@ -129,4 +153,9 @@ export const api = {
   getHallucinationRiskTrend: (days = 30) =>
     apiFetch<HallucinationRiskTrendResponse>(`/api/v1/stats/hallucination-risk/trend?days=${days}`),
   getGraph: () => apiFetch<GraphResponse>("/api/v1/graph"),
+  chat: (message: string, history: ChatMessage[] = []) =>
+    apiFetch<ChatResponse>("/api/v1/chat", {
+      method: "POST",
+      body: JSON.stringify({ message, history }),
+    }),
 };
