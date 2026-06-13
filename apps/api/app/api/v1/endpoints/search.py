@@ -1,12 +1,16 @@
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.config import settings
+from app.core.security import limiter
 from app.models import Chunk, Document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -33,7 +37,8 @@ class SearchResult(BaseModel):
 
 
 @router.post("", response_model=list[SearchResult])
-def search(payload: SearchRequest, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def search(request: Request, payload: SearchRequest, db: Session = Depends(get_db)):
     try:
         from openai import OpenAI
         from qdrant_client import QdrantClient
@@ -44,8 +49,9 @@ def search(payload: SearchRequest, db: Session = Depends(get_db)):
         )
         query_vector = embedding_response.data[0].embedding
     except Exception as e:
+        logger.exception("Embedding service failed during search")
         raise HTTPException(
-            status_code=503, detail=f"Embedding service unavailable: {e}"
+            status_code=503, detail="Embedding service unavailable"
         ) from e
 
     try:
@@ -56,9 +62,8 @@ def search(payload: SearchRequest, db: Session = Depends(get_db)):
             limit=payload.top_k * 3,  # oversample for post-filtering
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=503, detail=f"Vector search unavailable: {e}"
-        ) from e
+        logger.exception("Vector search failed during search")
+        raise HTTPException(status_code=503, detail="Vector search unavailable") from e
 
     results = []
     for hit in hits:

@@ -1,15 +1,17 @@
 from pathlib import Path
 
 from pipelines.ingestion.base import BaseConnector, RawChunk
+from pipelines.ingestion.security import validate_file_path
 
 
 class PDFConnector(BaseConnector):
     def ingest(self, source: str) -> list[RawChunk]:
         from pypdf import PdfReader
 
-        path = Path(source)
-        if not path.exists():
+        if not Path(source).exists():
             raise FileNotFoundError(f"PDF not found: {source}")
+
+        path = validate_file_path(source)
 
         reader = PdfReader(str(path))
         full_text = "\n\n".join(
@@ -21,7 +23,9 @@ class PDFConnector(BaseConnector):
 
         chunks = self._split_text(full_text)
         return [
-            RawChunk(text=chunk, metadata={"source": source, "page_count": len(reader.pages)})
+            RawChunk(
+                text=chunk, metadata={"source": source, "page_count": len(reader.pages)}
+            )
             for chunk in chunks
             if chunk.strip()
         ]

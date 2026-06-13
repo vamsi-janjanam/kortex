@@ -1,12 +1,16 @@
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.config import settings
+from app.core.security import limiter
 from app.models import Chunk, Document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -27,11 +31,20 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=4000)
     history: list[ChatMessage] = []
     top_k: int = 5
     min_freshness: float = 0.3
     max_conflict_risk: float = 0.7
+
+    @field_validator("history")
+    @classmethod
+    def _cap_history(cls, v: list[ChatMessage]) -> list[ChatMessage]:
+        if len(v) > settings.max_chat_history_messages:
+            raise ValueError(
+                f"history exceeds maximum of {settings.max_chat_history_messages} messages"
+            )
+        return v
 
 
 class ChatSource(BaseModel):
@@ -54,7 +67,8 @@ class ChatResponse(BaseModel):
 
 
 @router.post("", response_model=ChatResponse)
-def chat(payload: ChatRequest, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def chat(request: Request, payload: ChatRequest, db: Session = Depends(get_db)):
     try:
         from openai import OpenAI
         from qdrant_client import QdrantClient
@@ -65,8 +79,9 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         )
         query_vector = embedding_response.data[0].embedding
     except Exception as e:
+        logger.exception("Embedding service failed during chat")
         raise HTTPException(
-            status_code=503, detail=f"Embedding service unavailable: {e}"
+            status_code=503, detail="Embedding service unavailable"
         ) from e
 
     try:
@@ -77,9 +92,8 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
             limit=payload.top_k * 3,  # oversample for post-filtering
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=503, detail=f"Vector search unavailable: {e}"
-        ) from e
+        logger.exception("Vector search failed during chat")
+        raise HTTPException(status_code=503, detail="Vector search unavailable") from e
 
     sources: list[ChatSource] = []
     for hit in hits:
@@ -145,8 +159,9 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         )
         answer = response.content[0].text.strip()
     except Exception as e:
+        logger.exception("Answer generation failed during chat")
         raise HTTPException(
-            status_code=503, detail=f"Answer generation unavailable: {e}"
+            status_code=503, detail="Answer generation unavailable"
         ) from e
 
     return ChatResponse(answer=answer, sources=sources)

@@ -1,9 +1,13 @@
+# SECURITY: Datastore ports (5432/6379/6333/7474/7687) are published here for
+# local development convenience. In production they MUST NOT be exposed outside
+# localhost — bind them to 127.0.0.1 (e.g. "127.0.0.1:5432:5432") or drop the
+# published ports entirely and reach datastores over the internal Docker network.
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: kortex
-      POSTGRES_PASSWORD: kortex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kortex}
       POSTGRES_DB: kortex
     ports:
       - "5432:5432"
@@ -17,6 +21,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # SECURITY: In production set REDIS_PASSWORD and run redis with
+    # `command: redis-server --requirepass ${REDIS_PASSWORD}`, then update the
+    # REDIS_URL / CELERY_*_URL below to redis://:${REDIS_PASSWORD}@redis:6379/<db>.
+    # Left unauthenticated here so local `make up` keeps working unchanged.
     ports:
       - "6379:6379"
     volumes:
@@ -46,7 +54,7 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/kortexgraph
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-kortexgraph}
     volumes:
       - neo4j_data:/data
     healthcheck:
@@ -64,14 +72,14 @@ services:
       - "8000:8000"
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://kortex:kortex@postgres:5432/kortex
+      DATABASE_URL: postgresql://kortex:${POSTGRES_PASSWORD:-kortex}@postgres:5432/kortex
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: kortexgraph
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-kortexgraph}
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines
@@ -93,14 +101,14 @@ services:
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://kortex:kortex@postgres:5432/kortex
+      DATABASE_URL: postgresql://kortex:${POSTGRES_PASSWORD:-kortex}@postgres:5432/kortex
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: kortexgraph
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-kortexgraph}
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines

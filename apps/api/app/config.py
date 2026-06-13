@@ -30,9 +30,16 @@ class Settings(BaseSettings):
 
     # App
     app_env: str = "development"
-    secret_key: str = "dev-secret-key"
+    secret_key: str = ""
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:3000"
+
+    # Security / API auth
+    api_key: str = ""
+
+    # Chat input caps
+    max_chat_message_chars: int = 4000
+    max_chat_history_messages: int = 20
 
     # Celery
     celery_broker_url: str = "redis://localhost:6379/0"
