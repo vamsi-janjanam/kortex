@@ -18,6 +18,7 @@ class KnowledgeStats(BaseModel):
     avg_freshness_score: float
     avg_trust_score: float
     avg_conflict_risk: float
+    avg_hallucination_risk: float
     coverage_pct: float
 
 
@@ -37,8 +38,11 @@ def get_stats(db: Session = Depends(get_db)):
         avg_conflict_risk = (
             db.execute(select(func.avg(Chunk.conflict_risk))).scalar_one() or 0.0
         )
+        avg_hallucination_risk = (
+            db.execute(select(func.avg(Chunk.hallucination_risk))).scalar_one() or 0.0
+        )
     else:
-        avg_freshness = avg_trust = avg_conflict_risk = 0.0
+        avg_freshness = avg_trust = avg_conflict_risk = avg_hallucination_risk = 0.0
 
     # Simple coverage heuristic: ratio of chunks with trust_score >= 0.7
     if chunk_count > 0:
@@ -56,6 +60,7 @@ def get_stats(db: Session = Depends(get_db)):
         avg_freshness_score=round(float(avg_freshness), 3),
         avg_trust_score=round(float(avg_trust), 3),
         avg_conflict_risk=round(float(avg_conflict_risk), 3),
+        avg_hallucination_risk=round(float(avg_hallucination_risk), 3),
         coverage_pct=coverage_pct,
     )
 
@@ -207,18 +212,23 @@ class DistributionBucket(BaseModel):
 class QualityDistributionResponse(BaseModel):
     freshness: list[DistributionBucket]
     trust: list[DistributionBucket]
+    hallucination: list[DistributionBucket]
 
 
 @router.get("/quality/distribution", response_model=QualityDistributionResponse)
 def get_quality_distribution(db: Session = Depends(get_db)):
-    rows = db.execute(select(Chunk.freshness_score, Chunk.trust_score)).all()
+    rows = db.execute(
+        select(Chunk.freshness_score, Chunk.trust_score, Chunk.hallucination_risk)
+    ).all()
 
     freshness_counts = {bucket: 0 for bucket in DISTRIBUTION_BUCKETS}
     trust_counts = {bucket: 0 for bucket in DISTRIBUTION_BUCKETS}
+    hallucination_counts = {bucket: 0 for bucket in DISTRIBUTION_BUCKETS}
 
-    for freshness_score, trust_score in rows:
+    for freshness_score, trust_score, hallucination_risk in rows:
         freshness_counts[_bucket_for_score(freshness_score)] += 1
         trust_counts[_bucket_for_score(trust_score)] += 1
+        hallucination_counts[_bucket_for_score(hallucination_risk)] += 1
 
     return QualityDistributionResponse(
         freshness=[
@@ -227,6 +237,10 @@ def get_quality_distribution(db: Session = Depends(get_db)):
         ],
         trust=[
             DistributionBucket(bucket=bucket, count=trust_counts[bucket])
+            for bucket in DISTRIBUTION_BUCKETS
+        ],
+        hallucination=[
+            DistributionBucket(bucket=bucket, count=hallucination_counts[bucket])
             for bucket in DISTRIBUTION_BUCKETS
         ],
     )
@@ -286,3 +300,49 @@ def get_staleness_by_age(db: Session = Depends(get_db)):
         )
 
     return StalenessByAgeResponse(data=data)
+
+
+class HallucinationRiskTrendPoint(BaseModel):
+    date: str
+    avg_hallucination_risk: float
+    chunk_count: int
+
+
+class HallucinationRiskTrendResponse(BaseModel):
+    days: int
+    data: list[HallucinationRiskTrendPoint]
+
+
+@router.get("/hallucination-risk/trend", response_model=HallucinationRiskTrendResponse)
+def get_hallucination_risk_trend(days: int = 30, db: Session = Depends(get_db)):
+    today = datetime.now(timezone.utc).date()
+    start_date = today - timedelta(days=days - 1)
+
+    rows = db.execute(
+        select(
+            func.date(Chunk.created_at),
+            func.avg(Chunk.hallucination_risk),
+            func.count(),
+        )
+        .where(func.date(Chunk.created_at) >= start_date)
+        .group_by(func.date(Chunk.created_at))
+    ).all()
+
+    by_date: dict[date, tuple[float, int]] = {}
+    for d, avg_risk, count in rows:
+        d = d if isinstance(d, date) else datetime.fromisoformat(str(d)).date()
+        by_date[d] = (float(avg_risk or 0.0), count)
+
+    data = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        avg_risk, count = by_date.get(d, (0.0, 0))
+        data.append(
+            HallucinationRiskTrendPoint(
+                date=d.isoformat(),
+                avg_hallucination_risk=round(avg_risk, 3),
+                chunk_count=count,
+            )
+        )
+
+    return HallucinationRiskTrendResponse(days=days, data=data)

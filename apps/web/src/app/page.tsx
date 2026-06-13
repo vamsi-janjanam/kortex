@@ -21,6 +21,7 @@ export default function DashboardPage() {
         { metric: "Trust", score: Math.round(stats.avg_trust_score * 100) },
         { metric: "Coverage", score: stats.coverage_pct },
         { metric: "Conflict-Free", score: Math.round((1 - stats.avg_conflict_risk) * 100) },
+        { metric: "Low Hallucination Risk", score: Math.round((1 - stats.avg_hallucination_risk) * 100) },
       ]
     : [];
 
@@ -78,6 +79,7 @@ export default function DashboardPage() {
             {[
               { label: "Avg Trust Score", val: `${Math.round((stats?.avg_trust_score ?? 0) * 100)}%` },
               { label: "Avg Conflict Risk", val: `${Math.round((stats?.avg_conflict_risk ?? 0) * 100)}%` },
+              { label: "Avg Hallucination Risk", val: `${Math.round((stats?.avg_hallucination_risk ?? 0) * 100)}%` },
               { label: "High-Quality Coverage", val: `${stats?.coverage_pct ?? 0}%` },
             ].map(({ label, val }) => (
               <div key={label} className="flex justify-between text-sm">

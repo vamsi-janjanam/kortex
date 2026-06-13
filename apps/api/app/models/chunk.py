@@ -28,6 +28,7 @@ class Chunk(Base):
     trust_score: Mapped[float] = mapped_column(Float, default=1.0)
     completeness_score: Mapped[float] = mapped_column(Float, default=1.0)
     conflict_risk: Mapped[float] = mapped_column(Float, default=0.0)
+    hallucination_risk: Mapped[float] = mapped_column(Float, default=0.0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

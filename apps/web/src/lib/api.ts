@@ -16,6 +16,7 @@ export interface KnowledgeStats {
   avg_freshness_score: number;
   avg_trust_score: number;
   avg_conflict_risk: number;
+  avg_hallucination_risk: number;
   coverage_pct: number;
 }
 
@@ -69,6 +70,17 @@ export interface DistributionBucket {
 export interface QualityDistributionResponse {
   freshness: DistributionBucket[];
   trust: DistributionBucket[];
+  hallucination: DistributionBucket[];
+}
+
+export interface HallucinationRiskTrendPoint {
+  date: string;
+  avg_hallucination_risk: number;
+  chunk_count: number;
+}
+export interface HallucinationRiskTrendResponse {
+  days: number;
+  data: HallucinationRiskTrendPoint[];
 }
 
 export interface StalenessByAgeBucket {
@@ -114,5 +126,7 @@ export const api = {
   getQualityDistribution: () =>
     apiFetch<QualityDistributionResponse>("/api/v1/stats/quality/distribution"),
   getStalenessByAge: () => apiFetch<StalenessByAgeResponse>("/api/v1/stats/staleness/by-age"),
+  getHallucinationRiskTrend: (days = 30) =>
+    apiFetch<HallucinationRiskTrendResponse>(`/api/v1/stats/hallucination-risk/trend?days=${days}`),
   getGraph: () => apiFetch<GraphResponse>("/api/v1/graph"),
 };

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from app.celery_app import celery_app
 from app.config import settings
@@ -114,11 +115,23 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
 def score_document_chunks_task(self, document_id: str):
     """Run conflict detection across chunks of a document."""
     from pipelines.scoring.conflict import ConflictDetector
+    from pipelines.scoring.hallucination_risk import HallucinationRiskScorer
 
     db = SessionLocal()
     try:
         detector = ConflictDetector()
         detector.detect_for_document(uuid.UUID(document_id), db)
+
+        hallucination_scorer = HallucinationRiskScorer()
+        chunks = (
+            db.query(Chunk).filter(Chunk.document_id == uuid.UUID(document_id)).all()
+        )
+        for chunk in chunks:
+            chunk.hallucination_risk = hallucination_scorer.score(
+                chunk.freshness_score, chunk.trust_score, chunk.conflict_risk
+            )
+            chunk.scored_at = datetime.now(timezone.utc)
+
         db.commit()
 
         from app.tasks.extraction import extract_entities_task
