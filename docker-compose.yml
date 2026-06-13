@@ -40,6 +40,21 @@ services:
       timeout: 5s
       retries: 5
 
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/kortexgraph
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: ./apps/api
@@ -54,6 +69,9 @@ services:
       QDRANT_URL: http://qdrant:6333
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: kortexgraph
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines
@@ -64,6 +82,8 @@ services:
       redis:
         condition: service_healthy
       qdrant:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
 
   worker:
@@ -78,6 +98,9 @@ services:
       QDRANT_URL: http://qdrant:6333
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: kortexgraph
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines
@@ -88,6 +111,8 @@ services:
       redis:
         condition: service_healthy
       qdrant:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
 
   web:
@@ -107,3 +132,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  neo4j_data:

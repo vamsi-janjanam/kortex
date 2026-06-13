@@ -26,6 +26,7 @@ numpy = ">=1.26.0"
 langchain-text-splitters = ">=0.3.0"
 tenacity = ">=9.0.0"
 rich = ">=13.9.0"
+neo4j = ">=5.26.0"
 
 [dev-packages]
 pytest = ">=8.3.0"

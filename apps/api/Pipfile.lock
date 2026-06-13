@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d52bb30002cda5a5874374c2c6dc4bd49f460c3f7b74ae0973af1d96386fd640"
+            "sha256": "288a12b8e79dacb9a45fc2a744f1f73a5eacda092e7b879bdc55b8666223c172"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -751,6 +751,15 @@
             "markers": "python_version >= '3.7'",
             "version": "==0.1.2"
         },
+        "neo4j": {
+            "hashes": [
+                "sha256:b87abdd13a5cc2e3bd51026926c2f20ac38fa3febe98c340520dce19e97388d0",
+                "sha256:e1e246b65b572bd8ea97f9e0e721b7d40a5ce53e53d0007c29aef63e4f9124d9"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==6.2.0"
+        },
         "numpy": {
             "hashes": [
                 "sha256:001fbb8e08d942dd57599e781f2472269ee7f2755fae407b4f67b2f0b17da3f1",
@@ -1216,6 +1225,13 @@
             "index": "pypi",
             "markers": "python_version >= '3.10'",
             "version": "==0.0.32"
+        },
+        "pytz": {
+            "hashes": [
+                "sha256:04156e608bee23d3792fd45c94ae47fae1036688e75032eea2e3bf0323d1f126",
+                "sha256:0e60b47b29f21574376f218fe21abc009894a2321ea16c6754f3cad6eb7cdd6a"
+            ],
+            "version": "==2026.2"
         },
         "pyyaml": {
             "hashes": [

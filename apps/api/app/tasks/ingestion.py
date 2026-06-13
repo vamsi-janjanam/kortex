@@ -120,6 +120,11 @@ def score_document_chunks_task(self, document_id: str):
         detector = ConflictDetector()
         detector.detect_for_document(uuid.UUID(document_id), db)
         db.commit()
+
+        from app.tasks.extraction import extract_entities_task
+
+        extract_entities_task.delay(document_id)
+
         return {"document_id": document_id, "status": "scored"}
     except Exception as exc:
         db.rollback()

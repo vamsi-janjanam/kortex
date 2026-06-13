@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "kortex_chunks"
 
+    # Neo4j
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "kortexgraph"
+
     # LLM
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-6"
