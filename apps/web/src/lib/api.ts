@@ -80,6 +80,22 @@ export interface StalenessByAgeResponse {
   data: StalenessByAgeBucket[];
 }
 
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+}
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: string;
+  confidence: number;
+}
+export interface GraphResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 export const api = {
   getStats: () => apiFetch<KnowledgeStats>("/api/v1/stats"),
   getDocuments: (skip = 0, limit = 50) =>
@@ -98,4 +114,5 @@ export const api = {
   getQualityDistribution: () =>
     apiFetch<QualityDistributionResponse>("/api/v1/stats/quality/distribution"),
   getStalenessByAge: () => apiFetch<StalenessByAgeResponse>("/api/v1/stats/staleness/by-age"),
+  getGraph: () => apiFetch<GraphResponse>("/api/v1/graph"),
 };

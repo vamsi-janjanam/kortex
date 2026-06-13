@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Search, BarChart2, Zap, Activity } from "lucide-react";
+import { LayoutDashboard, FileText, Search, BarChart2, Zap, Activity, Network } from "lucide-react";
 import { clsx } from "clsx";
 
 const links = [
@@ -10,6 +10,7 @@ const links = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/eval", label: "Eval Results", icon: BarChart2 },
   { href: "/observability", label: "Observability", icon: Activity },
+  { href: "/graph", label: "Knowledge Graph", icon: Network },
 ];
 
 export default function Sidebar() {
