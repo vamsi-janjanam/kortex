@@ -37,6 +37,7 @@ export default function DocumentsPage() {
     markdown: "bg-blue-900/30 text-blue-300",
     github: "bg-slate-700 text-slate-300",
     slack: "bg-purple-900/30 text-purple-300",
+    gmail: "bg-rose-900/30 text-rose-300",
     confluence: "bg-indigo-900/30 text-indigo-300",
   };
 
@@ -75,7 +76,7 @@ export default function DocumentsPage() {
                 onChange={e => setForm({ ...form, source_type: e.target.value })}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500"
               >
-                {["markdown", "pdf", "github", "slack", "confluence", "other"].map(t => (
+                {["markdown", "pdf", "github", "slack", "gmail", "confluence", "other"].map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>

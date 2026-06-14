@@ -14,6 +14,7 @@ class SourceType(str, Enum):
     MARKDOWN = "markdown"
     GITHUB = "github"
     SLACK = "slack"
+    GMAIL = "gmail"
     CONFLUENCE = "confluence"
     JIRA = "jira"
     NOTION = "notion"

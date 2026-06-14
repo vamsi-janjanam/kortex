@@ -23,16 +23,34 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
             from pipelines.ingestion.pdf import PDFConnector
 
             connector = PDFConnector()
-        elif source_type in (SourceType.MARKDOWN, SourceType.GITHUB):
+        elif source_type == SourceType.MARKDOWN:
             from pipelines.ingestion.markdown import MarkdownConnector
 
             connector = MarkdownConnector()
+        elif source_type == SourceType.GITHUB:
+            from pipelines.ingestion.github import GitHubConnector
+
+            connector = GitHubConnector()
+        elif source_type == SourceType.SLACK:
+            from pipelines.ingestion.slack import SlackConnector
+
+            connector = SlackConnector()
+        elif source_type == SourceType.GMAIL:
+            from pipelines.ingestion.gmail import GmailConnector
+
+            connector = GmailConnector()
         else:
             from pipelines.ingestion.markdown import MarkdownConnector
 
             connector = MarkdownConnector()
 
         raw_chunks = connector.ingest(source)
+
+        # A connector can legitimately return zero chunks (e.g. a Gmail query
+        # with no matches, an empty Slack channel). Skip embedding/upsert in
+        # that case — OpenAI rejects an empty input batch.
+        if not raw_chunks:
+            return {"document_id": document_id, "chunks_ingested": 0}
 
         from pipelines.scoring.freshness import FreshnessScorer
         from pipelines.scoring.trust import TrustScorer

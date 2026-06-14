@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dim: int = 1536
 
+    # Source connectors
+    github_token: str = ""
+    slack_bot_token: str = ""
+    gmail_credentials_path: str = ""
+    gmail_token_path: str = ""
+
     # App
     app_env: str = "development"
     secret_key: str = ""
