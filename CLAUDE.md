@@ -83,3 +83,9 @@ Required in `.env` (copy from `.env.example`):
 
 Optional (have defaults for Docker Compose):
 - `DATABASE_URL`, `REDIS_URL`, `QDRANT_URL`, `QDRANT_COLLECTION`
+
+Optional (source connectors — empty = that connector disabled):
+- `GITHUB_TOKEN` — GitHub personal access token (repo read scope) for GITHUB ingestion
+- `SLACK_BOT_TOKEN` — Slack bot token (`xoxb-...`, channels:history/read) for SLACK ingestion
+- `GMAIL_CREDENTIALS_PATH` — path to Gmail OAuth client-secrets JSON for GMAIL ingestion
+- `GMAIL_TOKEN_PATH` — path to stored Gmail OAuth token JSON for GMAIL ingestion

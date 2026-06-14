@@ -16,13 +16,13 @@ class SlackConnector(BaseConnector):
 
     def _client(self):
         """Instantiate the Slack WebClient (isolated for test monkeypatching)."""
-        from slack_sdk import WebClient
-
         token = settings.slack_bot_token
         if not token:
             raise ValueError(
                 "SlackConnector requires settings.slack_bot_token to be set"
             )
+        from slack_sdk import WebClient
+
         return WebClient(token=token)
 
     @staticmethod

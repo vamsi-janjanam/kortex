@@ -104,13 +104,13 @@ class GitHubConnector(BaseConnector):
 
     def _client(self):
         """Instantiate the PyGithub client (isolated for test monkeypatching)."""
-        from github import Github
-
         token = settings.github_token
         if not token:
             raise ValueError(
                 "GitHubConnector requires settings.github_token to be set"
             )
+        from github import Github
+
         return Github(token)
 
     def ingest(self, source: str) -> list[RawChunk]:

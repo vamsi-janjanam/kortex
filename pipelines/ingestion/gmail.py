@@ -15,13 +15,13 @@ class GmailConnector(BaseConnector):
     """
 
     def _credentials(self):
-        from google.auth.exceptions import GoogleAuthError
-        from google.oauth2.credentials import Credentials
-
         token_path = settings.gmail_token_path
         creds_path = settings.gmail_credentials_path
 
         if token_path:
+            from google.auth.exceptions import GoogleAuthError
+            from google.oauth2.credentials import Credentials
+
             try:
                 creds = Credentials.from_authorized_user_file(token_path, _SCOPES)
             except (FileNotFoundError, ValueError, GoogleAuthError):
