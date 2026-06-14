@@ -9,8 +9,8 @@ An AI-native platform that continuously ingests, structures, validates, scores, 
 ## Quick Start
 
 ```bash
-# 1. Copy and fill in your API keys
-cp .env.example .env
+# 1. Create .env with your API keys — ANTHROPIC_API_KEY and OPENAI_API_KEY are
+#    required (see "Environment Variables" in CLAUDE.md for the full list).
 
 # 2. Start all services
 make up
@@ -33,13 +33,41 @@ Then open:
 
 The eval harness is the core proof-of-value. It runs 30 Q&A pairs against the seed corpus in two modes and compares results:
 
+<!-- EVAL_TABLE_START -->
 | Metric | Raw | Cleaned | Delta |
 |--------|-----|---------|-------|
-| Accuracy | — | — | run `make eval` |
+| Accuracy | — | — | run `make eval-report` |
 | Faithfulness | — | — | |
 | Hallucination Rate | — | — | |
+<!-- EVAL_TABLE_END -->
+
+> The table above is auto-populated. The `—` placeholders are filled in by a real
+> run — see [Populating the table](#populating-the-table) below. No numbers are
+> hardcoded.
 
 The seed corpus contains deliberate conflicts (API docs v1 vs. v2 with contradictory authentication methods, rate limits, data retention policies, and SDK support). **Cleaned mode** filters out stale/conflicting chunks — the delta between raw and cleaned is the headline metric.
+
+### Populating the table
+
+The numbers above are generated on your machine (requires Docker + real API keys —
+they are never hardcoded in this repo). One-time prerequisites:
+
+```bash
+# set REAL ANTHROPIC_API_KEY + OPENAI_API_KEY in .env (the single config file)
+make up                       # start postgres, redis, qdrant, api, worker, web
+make migrate                  # create the 7 tables
+make seed                     # ingest the synthetic seed corpus
+```
+
+Then run a single command to evaluate and fill in the table:
+
+```bash
+make eval-report
+```
+
+This runs the harness in both modes, writes `results.json`, and rewrites the
+metric table in this README between the `<!-- EVAL_TABLE_START -->` /
+`<!-- EVAL_TABLE_END -->` markers. It is idempotent — re-run any time to refresh.
 
 ## Architecture
 

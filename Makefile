@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate seed eval test lint format install-api install-web run
+.PHONY: up down logs migrate seed eval eval-raw eval-cleaned eval-report test lint format install-api install-web run
 
 run:
 	./dev.sh
@@ -34,6 +34,15 @@ eval:
 	@echo "=== RAW baseline ===" && make eval-raw
 	@echo ""
 	@echo "=== CLEANED pipeline ===" && make eval-cleaned
+
+eval-report:
+	@echo "=== Running harness (both modes) ==="
+	# Write JSON to /data (mounted to ./data on the host) so the host can read it.
+	docker compose exec api python -m pipelines.eval.harness --mode both --output /data/results.json
+	@echo "=== Injecting results into README ==="
+	# report.py is pure file I/O; run on the HOST so it can edit ./README.md
+	# (the repo root is not mounted into the api container).
+	python -m pipelines.eval.report --input data/results.json --readme README.md
 
 test:
 	cd apps/api && python -m pytest ../../tests/ -v

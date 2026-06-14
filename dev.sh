@@ -12,9 +12,7 @@ die()  { echo -e "${RED}✗ $1${NC}"; exit 1; }
 
 # ── .env ──────────────────────────────────────────────────────────────────────
 if [ ! -f "$ROOT/.env" ]; then
-  cp "$ROOT/.env.example" "$ROOT/.env"
-  warn ".env created from .env.example — fill in your API keys before running again"
-  exit 1
+  die ".env not found — create it with your API keys (see Environment Variables in CLAUDE.md)"
 fi
 export $(grep -v '^#' "$ROOT/.env" | xargs) 2>/dev/null
 ok ".env loaded"
