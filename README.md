@@ -27,6 +27,7 @@ make eval
 
 Then open:
 - **Dashboard**: http://localhost:3000
+- **Documents / Search / Graph / Observability / Chat**: linked from the dashboard nav
 - **API docs**: http://localhost:8000/docs
 
 ## Eval Harness
@@ -72,30 +73,51 @@ metric table in this README between the `<!-- EVAL_TABLE_START -->` /
 ## Architecture
 
 ```
-Sources (Markdown, PDF, Slack, ...)
-    ↓ Ingestion (pipelines/ingestion/)
+Sources (Markdown · PDF · GitHub · Slack · Gmail)
+    ↓ Ingestion (pipelines/ingestion/ — one connector per source)
     ↓ Entity Extraction (Claude Haiku NER)
-    ↓ Scoring (freshness + trust + conflict detection)
-    ↓ Storage (PostgreSQL + Qdrant)
+    ↓ Scoring (freshness + trust + conflict + hallucination risk)
+    ↓ Storage (PostgreSQL + Qdrant + Neo4j knowledge graph)
     ↓ Retrieval (semantic search with score filtering)
     ↓ Eval (30 Q&A × raw vs. cleaned × Claude judge)
+       + Observability dashboard (coverage / staleness / conflicts / risk)
 ```
 
 See [docs/architecture.md](docs/architecture.md) for details.
+
+## Source Connectors
+
+Each source has a connector under `pipelines/ingestion/`. Register a source via
+`POST /api/v1/documents` or the dashboard's **Documents** page. Connectors whose
+credentials are unset stay disabled (they raise a clear error if invoked).
+
+| Source | `source_type` | What `source` is | Credentials (in `.env`) |
+|--------|---------------|------------------|--------------------------|
+| Markdown | `markdown` | file path, URL, or raw text | — |
+| PDF | `pdf` | file path | — |
+| GitHub | `github` | `owner/repo` or repo URL — ingests the **codebase** | `GITHUB_TOKEN` |
+| Slack | `slack` | channel ID or `#channel` | `SLACK_BOT_TOKEN` |
+| Gmail | `gmail` | Gmail search query (e.g. `newer_than:30d`) | `GMAIL_CREDENTIALS_PATH`, `GMAIL_TOKEN_PATH` |
+
+GitHub, Slack, and Gmail are live-API integrations (PyGithub / `slack_sdk` /
+Google API + OAuth2). See [CLAUDE.md](CLAUDE.md) → *Adding a New Source Connector*
+to add more.
 
 ## Phases
 
 | Phase | Status | Outcome |
 |-------|--------|---------|
 | Phase 0: Foundation | ✅ Complete | Infra, models, API, CI |
-| Phase 1: Verity Core | ✅ Complete | Ingestion → scoring → retrieval → eval |
-| Phase 2: Knowledge Graph | 🔜 Next | Neo4j + graph viz + observability dashboard |
-| Phase 3: Agent Memory | 🔜 Planned | Persistent multi-agent memory (LangGraph) |
+| Phase 1: Verity Core | ✅ Complete | 5-source ingestion → scoring → retrieval → eval |
+| Phase 2: Knowledge Graph + Observability | ✅ Complete | Neo4j graph + graph viz + observability dashboard + hallucination-risk scoring |
+| Phase 3: Agent Memory | 🔜 Next | Persistent multi-agent memory (LangGraph) |
 
 ## Tech Stack
 
 - **API**: FastAPI + Celery + PostgreSQL + Redis
 - **Vector DB**: Qdrant
+- **Graph DB**: Neo4j (knowledge graph: entities + relationships)
+- **Connectors**: PyGithub, `slack_sdk`, Google API + OAuth2 (GitHub / Slack / Gmail)
 - **LLM**: Claude (claude-sonnet-4-6 for eval, claude-haiku-4-5 for extraction)
 - **Embeddings**: OpenAI text-embedding-3-small
 - **Frontend**: Next.js 15 + Tailwind CSS
@@ -104,9 +126,10 @@ See [docs/architecture.md](docs/architecture.md) for details.
 ## Development
 
 ```bash
-make test      # pytest
-make lint      # ruff check + format check
-make logs      # docker compose logs -f
-make shell-api # bash into API container
-make shell-db  # psql into PostgreSQL
+make test         # pytest
+make lint         # ruff check + format check
+make eval-report  # run eval (both modes) + auto-fill the metric table above
+make logs         # docker compose logs -f
+make shell-api    # bash into API container
+make shell-db     # psql into PostgreSQL
 ```
