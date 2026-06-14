@@ -77,7 +77,9 @@ The eval harness detects these via `has_seeded_conflict: true` in `qa_pairs.json
 
 ## Environment Variables
 
-Required in `.env` (copy from `.env.example`):
+All config lives in a single gitignored `.env` file (there is no `.env.example` template).
+
+Required in `.env`:
 - `ANTHROPIC_API_KEY` — Claude (extraction, conflict detection, eval judge)
 - `OPENAI_API_KEY` — embeddings (text-embedding-3-small)
 
