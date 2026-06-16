@@ -64,10 +64,13 @@ def orchestrator_plan(state: dict, db) -> dict:
 
 
 def memory_recall(state: dict, db) -> dict:
+    # Recall recent memories visible to this agent: its own plus any shared by
+    # other agents. We deliberately do NOT filter by the raw query text — prior
+    # learnings rarely contain the new question verbatim, and substring matching
+    # would defeat the cross-agent "what has the team already learned" recall.
     try:
         memories = MemoryStore(db).recall(
             agent_role=state["agent_role"],
-            query=state["query"],
             include_shared=True,
             limit=5,
         )

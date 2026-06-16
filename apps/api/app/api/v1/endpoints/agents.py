@@ -77,7 +77,7 @@ def _memory_out(m) -> MemoryOut:
     )
 
 
-@router.post("", response_model=AgentQueryResponse)
+@router.post("/query", response_model=AgentQueryResponse)
 @limiter.limit("20/minute")
 def query_agent(
     request: Request, payload: AgentQueryRequest, db: Session = Depends(get_db)
