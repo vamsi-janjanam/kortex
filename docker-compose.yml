@@ -83,6 +83,7 @@ services:
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines
+      - ./agents:/agents
       - ./data:/data
     depends_on:
       postgres:
@@ -112,6 +113,7 @@ services:
     volumes:
       - ./apps/api:/app_src
       - ./pipelines:/pipelines
+      - ./agents:/agents
       - ./data:/data
     depends_on:
       postgres:

@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Make pipelines and data available inside container
-ENV PYTHONPATH=/app:/pipelines:/data
+# Make pipelines, agents, and data available inside container
+ENV PYTHONPATH=/app:/pipelines:/agents:/data
 
 # Run as a non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

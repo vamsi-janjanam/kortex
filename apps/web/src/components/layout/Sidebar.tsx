@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Search, BarChart2, Zap, Activity, Network, MessageSquare } from "lucide-react";
+import { LayoutDashboard, FileText, Search, BarChart2, Zap, Activity, Network, MessageSquare, Bot } from "lucide-react";
 import { clsx } from "clsx";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/agents", label: "Agents", icon: Bot },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/search", label: "Search", icon: Search },
   { href: "/eval", label: "Eval Results", icon: BarChart2 },
