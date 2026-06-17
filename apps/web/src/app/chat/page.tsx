@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Send, FileText, AlertTriangle, Bot, User } from "lucide-react";
-import { api, type ChatMessage, type ChatSource } from "@/lib/api";
+import { Send, FileText, AlertTriangle, Bot, User, Share2 } from "lucide-react";
+import { api, type ChatMessage, type ChatSource, type GraphContext } from "@/lib/api";
 
 interface DisplayMessage extends ChatMessage {
   sources?: ChatSource[];
+  graphContext?: GraphContext | null;
   error?: boolean;
 }
 
@@ -31,7 +32,15 @@ export default function ChatPage() {
 
     try {
       const res = await api.chat(text, history);
-      setMessages([...next, { role: "assistant", content: res.answer, sources: res.sources }]);
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: res.answer,
+          sources: res.sources,
+          graphContext: res.graph_context,
+        },
+      ]);
     } catch (err) {
       setMessages([
         ...next,
@@ -100,6 +109,35 @@ export default function ChatPage() {
                 )}
                 {m.content}
               </div>
+
+              {m.graphContext && m.graphContext.relationships.length > 0 && (
+                <div className="w-full space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 uppercase tracking-wider">
+                    <Share2 size={12} className="text-cyan-400" /> Graph context
+                  </div>
+                  <div className="bg-[#0f1320] border border-cyan-900/50 rounded-lg px-3 py-2 space-y-1">
+                    {m.graphContext.entities.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-1">
+                        {m.graphContext.entities.map((e) => (
+                          <span
+                            key={e}
+                            className="px-1.5 py-0.5 text-[10px] bg-cyan-950/40 text-cyan-300 rounded"
+                          >
+                            {e}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {m.graphContext.relationships.map((r, ri) => (
+                      <div key={ri} className="text-xs text-slate-400">
+                        <span className="text-slate-300">{r.source}</span>
+                        <span className="text-cyan-400"> {r.type} </span>
+                        <span className="text-slate-300">{r.target}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {m.sources && m.sources.length > 0 && (
                 <div className="w-full space-y-1.5">

@@ -130,9 +130,33 @@ export interface ChatSource {
   source_url: string;
 }
 
+export interface GraphRelationship {
+  source: string;
+  target: string;
+  type: string;
+}
+
+export interface GraphContext {
+  entities: string[];
+  relationships: GraphRelationship[];
+}
+
 export interface ChatResponse {
   answer: string;
   sources: ChatSource[];
+  graph_context?: GraphContext | null;
+}
+
+export interface DriftTrendPoint {
+  date: string;
+  avg_drift_score: number;
+  drifted_chunk_count: number;
+  chunk_count: number;
+}
+export interface DriftTrendResponse {
+  days: number;
+  threshold: number;
+  data: DriftTrendPoint[];
 }
 
 export const api = {
@@ -156,6 +180,8 @@ export const api = {
   getHallucinationRiskTrend: (days = 30) =>
     apiFetch<HallucinationRiskTrendResponse>(`/api/v1/stats/hallucination-risk/trend?days=${days}`),
   getGraph: () => apiFetch<GraphResponse>("/api/v1/graph"),
+  getDriftTrend: (days = 30) =>
+    apiFetch<DriftTrendResponse>(`/api/v1/stats/drift/trend?days=${days}`),
   chat: (message: string, history: ChatMessage[] = []) =>
     apiFetch<ChatResponse>("/api/v1/chat", {
       method: "POST",

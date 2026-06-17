@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     slack_bot_token: str = ""
     gmail_credentials_path: str = ""
     gmail_token_path: str = ""
+    notion_token: str = ""
 
     # App
     app_env: str = "development"
@@ -50,6 +51,9 @@ class Settings(BaseSettings):
     # Celery
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
+
+    # Autonomous maintenance (Celery beat)
+    maintenance_rescore_interval_minutes: int = 60
 
     @property
     def cors_origins_list(self) -> list[str]:

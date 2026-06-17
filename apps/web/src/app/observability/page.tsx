@@ -19,6 +19,7 @@ import {
   type QualityDistributionResponse,
   type StalenessByAgeResponse,
   type HallucinationRiskTrendResponse,
+  type DriftTrendResponse,
 } from "@/lib/api";
 
 export default function ObservabilityPage() {
@@ -27,6 +28,7 @@ export default function ObservabilityPage() {
   const [qualityDistribution, setQualityDistribution] = useState<QualityDistributionResponse | null>(null);
   const [stalenessByAge, setStalenessByAge] = useState<StalenessByAgeResponse | null>(null);
   const [hallucinationRiskTrend, setHallucinationRiskTrend] = useState<HallucinationRiskTrendResponse | null>(null);
+  const [driftTrend, setDriftTrend] = useState<DriftTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,13 +38,15 @@ export default function ObservabilityPage() {
       api.getQualityDistribution(),
       api.getStalenessByAge(),
       api.getHallucinationRiskTrend(),
+      api.getDriftTrend(),
     ])
-      .then(([trend, bySource, distribution, staleness, hallucinationTrend]) => {
+      .then(([trend, bySource, distribution, staleness, hallucinationTrend, drift]) => {
         setConflictTrend(trend);
         setQualityBySource(bySource);
         setQualityDistribution(distribution);
         setStalenessByAge(staleness);
         setHallucinationRiskTrend(hallucinationTrend);
+        setDriftTrend(drift);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -72,6 +76,13 @@ export default function ObservabilityPage() {
   const hallucinationRiskTrendData = (hallucinationRiskTrend?.data ?? []).map((d) => ({
     date: d.date,
     avg_hallucination_risk: Math.round(d.avg_hallucination_risk * 100),
+    chunk_count: d.chunk_count,
+  }));
+
+  const driftTrendData = (driftTrend?.data ?? []).map((d) => ({
+    date: d.date,
+    avg_drift_score: Math.round(d.avg_drift_score * 100),
+    drifted_chunk_count: d.drifted_chunk_count,
     chunk_count: d.chunk_count,
   }));
 
@@ -149,6 +160,56 @@ export default function ObservabilityPage() {
         ) : (
           <div className="h-64 flex items-center justify-center text-slate-600 text-sm">
             No hallucination risk data yet
+          </div>
+        )}
+      </div>
+
+      <div className="bg-[#161b27] border border-slate-700 rounded-xl p-5">
+        <h3 className="text-sm font-medium text-slate-300 mb-4">
+          Semantic Drift Trend ({driftTrend?.days ?? 30} days)
+        </h3>
+        <p className="text-xs text-slate-500 -mt-2 mb-4">
+          Adverse drift of chunk quality (freshness eroding, conflict risk rising) — distinct from
+          raw staleness. Bars show chunks flagged above the {Math.round((driftTrend?.threshold ?? 0.5) * 100)}% drift threshold.
+        </p>
+        {driftTrendData.length > 0 && driftTrendData.some((d) => d.chunk_count > 0) ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={driftTrendData} barCategoryGap="30%">
+              <CartesianGrid stroke="#2d3748" />
+              <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 12 }} />
+              <YAxis yAxisId="left" domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 12 }} unit="%" />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                allowDecimals={false}
+                tick={{ fill: "#94a3b8", fontSize: 12 }}
+              />
+              <Tooltip
+                contentStyle={{ background: "#1e2535", border: "1px solid #374151", borderRadius: 8 }}
+                formatter={(v: number, name: string) =>
+                  name === "Avg Drift Score" ? [`${v}%`, name] : [v, name]
+                }
+              />
+              <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 13 }} />
+              <Bar
+                yAxisId="right"
+                dataKey="drifted_chunk_count"
+                name="Drifted Chunks"
+                fill="#f97316"
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                yAxisId="left"
+                dataKey="avg_drift_score"
+                name="Avg Drift Score"
+                fill="#06b6d4"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-slate-600 text-sm">
+            Ingest documents to see drift metrics
           </div>
         )}
       </div>

@@ -302,6 +302,89 @@ def get_staleness_by_age(db: Session = Depends(get_db)):
     return StalenessByAgeResponse(data=data)
 
 
+class DriftTrendPoint(BaseModel):
+    date: str
+    avg_drift_score: float
+    drifted_chunk_count: int
+    chunk_count: int
+
+
+class DriftTrendResponse(BaseModel):
+    days: int
+    threshold: float
+    data: list[DriftTrendPoint]
+
+
+# A chunk is flagged as "drifted" when its drift score crosses this bar.
+DRIFT_FLAG_THRESHOLD = 0.5
+
+
+@router.get("/drift/trend", response_model=DriftTrendResponse)
+def get_drift_trend(days: int = 30, db: Session = Depends(get_db)):
+    """Semantic + quality drift signal over time.
+
+    Distinct from staleness: rather than raw age, this measures how far each
+    chunk's quality has moved adversely (freshness eroding, conflict risk
+    rising) relative to an ideal baseline, using the existing chunk score shape
+    (no parallel scoring scheme). DB access is guarded like the neighboring
+    trend endpoints so the endpoint degrades to an empty series.
+    """
+    from pipelines.scoring.drift import DriftDetector
+
+    today = datetime.now(timezone.utc).date()
+    start_date = today - timedelta(days=days - 1)
+    detector = DriftDetector()
+
+    try:
+        rows = db.execute(
+            select(
+                func.date(Chunk.created_at),
+                Chunk.freshness_score,
+                Chunk.conflict_risk,
+            ).where(func.date(Chunk.created_at) >= start_date)
+        ).all()
+    except Exception:
+        rows = []
+
+    # Baseline: a freshly-ingested, conflict-free chunk. Drift = adverse movement
+    # away from that baseline, reusing DriftDetector's quality-drift signal.
+    by_date: dict[date, list[float]] = {}
+    for created_at, freshness_score, conflict_risk in rows:
+        d = (
+            created_at
+            if isinstance(created_at, date)
+            else datetime.fromisoformat(str(created_at)).date()
+        )
+        result = detector.compute_drift(
+            current_freshness=freshness_score,
+            prior_freshness=1.0,
+            current_conflict_risk=conflict_risk,
+            prior_conflict_risk=0.0,
+        )
+        by_date.setdefault(d, []).append(result["drift_score"])
+
+    data = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        scores = by_date.get(d, [])
+        if scores:
+            avg = round(sum(scores) / len(scores), 3)
+            drifted = sum(1 for s in scores if s >= DRIFT_FLAG_THRESHOLD)
+        else:
+            avg = 0.0
+            drifted = 0
+        data.append(
+            DriftTrendPoint(
+                date=d.isoformat(),
+                avg_drift_score=avg,
+                drifted_chunk_count=drifted,
+                chunk_count=len(scores),
+            )
+        )
+
+    return DriftTrendResponse(days=days, threshold=DRIFT_FLAG_THRESHOLD, data=data)
+
+
 class HallucinationRiskTrendPoint(BaseModel):
     date: str
     avg_hallucination_risk: float

@@ -39,6 +39,10 @@ def ingest_document_task(self, document_id: str, file_path: str | None = None):
             from pipelines.ingestion.gmail import GmailConnector
 
             connector = GmailConnector()
+        elif source_type == SourceType.NOTION:
+            from pipelines.ingestion.notion import NotionConnector
+
+            connector = NotionConnector()
         else:
             from pipelines.ingestion.markdown import MarkdownConnector
 
