@@ -100,7 +100,7 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.celery_app worker --beat --loglevel=info --concurrency=2
     env_file: .env
     environment:
       DATABASE_URL: postgresql://kortex:${POSTGRES_PASSWORD:-kortex}@postgres:5432/kortex
