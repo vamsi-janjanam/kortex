@@ -7,6 +7,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "api"))
 
 
 @pytest.fixture(scope="session", autouse=True)
+def _bypass_api_key_auth():
+    """Disable the X-API-Key gate for the test session.
+
+    ``require_api_key`` reads ``settings.api_key``/``settings.app_env`` live on
+    each request. A populated ``.env`` (non-empty ``API_KEY``) would otherwise
+    make every authenticated endpoint return 401 in tests, which don't send the
+    header. Force the development bypass (empty key + development env) so the
+    suite is green regardless of the ambient ``.env``.
+    """
+    from app.config import settings
+
+    saved = (settings.api_key, settings.app_env)
+    settings.api_key = ""
+    settings.app_env = "development"
+    yield
+    settings.api_key, settings.app_env = saved
+
+
+@pytest.fixture(scope="session", autouse=True)
 def create_tables():
     """Create all tables before the test session; drop them after.
 
