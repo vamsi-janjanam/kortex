@@ -32,6 +32,8 @@ ROWS = [
     ("Accuracy", "accuracy", True),
     ("Faithfulness", "faithfulness", True),
     ("Hallucination Rate", "hallucination_rate", False),
+    ("Explains Rationale (why)", "rationale", True),
+    ("Conflicts Surfaced", "conflict_surfaced", True),
 ]
 
 
@@ -41,11 +43,21 @@ def aggregate(results: list[dict], mode: str) -> dict:
     if not rows:
         return {}
     n = len(rows)
+    conflict_rows = [r for r in rows if r.get("has_seeded_conflict")]
+    nc = len(conflict_rows)
     return {
         "accuracy": round(sum(float(r.get("correctness", 0.0)) for r in rows) / n * 100, 1),
         "faithfulness": round(sum(float(r.get("faithfulness", 0.0)) for r in rows) / n * 100, 1),
         "hallucination_rate": round(
             sum(1 for r in rows if r.get("is_hallucinating")) / n * 100, 1
+        ),
+        "rationale": round(
+            sum(float(r.get("explains_rationale", 0.0)) for r in rows) / n * 100, 1
+        ),
+        "conflict_surfaced": (
+            round(sum(1 for r in conflict_rows if r.get("surfaces_conflict")) / nc * 100, 1)
+            if nc
+            else 0.0
         ),
         "n": n,
     }

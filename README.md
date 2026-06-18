@@ -6,7 +6,7 @@ An AI-native platform that continuously ingests, structures, validates, scores, 
 
 > Most enterprise AI failures are not caused by weak models — they're caused by poor knowledge.
 
-Kortex ingests data from multiple sources, extracts entities into a knowledge graph, scores every chunk for freshness / trust / conflict / hallucination-risk, serves graph-aware retrieval and a copilot, and runs a persistent multi-agent memory layer — all proven by a before/after eval harness.
+Kortex ingests data from multiple sources, extracts entities **and business rules — decisions, policies, processes, and their rationale (the "why")** — into a knowledge graph, scores every chunk for freshness / trust / conflict / hallucination-risk, serves graph-aware retrieval, a copilot, and a **business-logic reasoning endpoint**, and runs a persistent multi-agent memory layer — all proven by a before/after eval harness that now also measures *business understanding*, not just fact retrieval.
 
 ## Quick Start
 
@@ -42,6 +42,8 @@ The eval harness is the core proof-of-value. It runs 30 Q&A pairs against the se
 | Accuracy | — | — | run `make eval-report` |
 | Faithfulness | — | — | |
 | Hallucination Rate | — | — | |
+| Explains Rationale (why) | — | — | |
+| Conflicts Surfaced | — | — | |
 <!-- EVAL_TABLE_END -->
 
 > The table above is auto-populated. The `—` placeholders are filled in by a real
@@ -49,6 +51,8 @@ The eval harness is the core proof-of-value. It runs 30 Q&A pairs against the se
 > hardcoded.
 
 The seed corpus contains deliberate conflicts (API docs v1 vs. v2 with contradictory authentication methods, rate limits, data retention policies, and SDK support). **Cleaned mode** filters out stale/conflicting chunks — the delta between raw and cleaned is the headline metric.
+
+Beyond fact retrieval, the harness also scores **business understanding**: *Explains Rationale* (does the answer explain the *why* — the decision/policy behind a fact, not just the fact) and *Conflicts Surfaced* (of the seeded-conflict questions, how many answers explicitly call out the contradiction instead of silently picking a side).
 
 ### Populating the table
 
@@ -75,14 +79,15 @@ metric table in this README between the `<!-- EVAL_TABLE_START -->` /
 ## Architecture
 
 ```
-Sources (Markdown · PDF · GitHub · Slack · Gmail · Notion)
+Sources (Markdown · PDF · GitHub code+issues+PRs · Slack · Gmail · Notion)
     ↓ Ingestion (pipelines/ingestion/ — one connector per source)
-    ↓ Entity Extraction (Claude Haiku NER → entities + relationships)
+    ↓ Extraction (Claude Haiku → entities + relationships AND business rules + rationale)
     ↓ Scoring (freshness + trust + conflict + hallucination risk + drift)
     ↓ Storage (PostgreSQL + Qdrant + Neo4j knowledge graph)
     ↓ Retrieval (semantic search with score filtering)
-    ├─ Eval (30 Q&A × raw vs. cleaned × Claude judge)
+    ├─ Eval (30 Q&A × raw vs. cleaned × Claude judge — incl. business understanding)
     ├─ AI Copilot (graph-aware Q&A over the knowledge base)
+    ├─ Reasoning (business-logic Q&A: explains the "why", cites rules, surfaces conflicts)
     ├─ Multi-Agent Memory Layer (LangGraph: orchestrator + knowledge + memory)
     ├─ Observability dashboard (coverage / staleness / conflicts / risk)
     └─ Autonomous maintenance (Celery beat: periodic re-scoring)
@@ -95,7 +100,9 @@ See [docs/architecture.md](docs/architecture.md) and [docs/data_model.md](docs/d
 `POST /api/v1/documents` → DB `Document` record → Celery `ingest_document_task`
 → connector parses & chunks → OpenAI embeds → Qdrant upsert + `Chunk` records →
 `score_document_chunks_task` (freshness/trust/conflict/hallucination-risk) →
-entity & relationship extraction → Neo4j graph sync. A periodic
+entity & relationship extraction **plus business-rule extraction** (each rule
+linked to the entities it governs) → Neo4j graph sync (entities, relationships,
+`BusinessRule` nodes, `SUPERSEDES` + `GOVERNS` edges). A periodic
 `maintenance_sweep` re-scores chunks as they age.
 
 ## Source Connectors
@@ -108,7 +115,7 @@ credentials are unset stay disabled (they raise a clear error if invoked).
 |--------|---------------|------------------|--------------------------|
 | Markdown | `markdown` | file path, URL, or raw text | — |
 | PDF | `pdf` | file path | — |
-| GitHub | `github` | `owner/repo` or repo URL — ingests the **codebase** | `GITHUB_TOKEN` |
+| GitHub | `github` | `owner/repo` or repo URL — ingests the **codebase + issues, pull requests & their comments** | `GITHUB_TOKEN` |
 | Slack | `slack` | channel ID or `#channel` | `SLACK_BOT_TOKEN` |
 | Gmail | `gmail` | Gmail search query (e.g. `newer_than:30d`) | `GMAIL_CREDENTIALS_PATH`, `GMAIL_TOKEN_PATH` |
 | Notion | `notion` | page or database ID | `NOTION_TOKEN` |
@@ -134,10 +141,36 @@ Every chunk is scored on ingest (and re-scored periodically):
 
 Entity & relationship extraction (`pipelines/extraction/entity_extractor.py`,
 Claude Haiku NER) populates `Entity` and `EntityRelationship` records, which are
-synced into **Neo4j** (`pipelines/graph/sync.py`). The graph is served via
-`GET /api/v1/graph` and visualized on the **Graph** page (React Flow). The AI
-copilot is graph-aware: retrieved chunks are matched to known entities, whose
-relationships are injected into the answer prompt.
+synced into **Neo4j** (`pipelines/graph/sync.py`). The graph also holds
+`BusinessRule` nodes with `SUPERSEDES` edges (decision provenance) and `GOVERNS`
+edges linking rules to the entities they constrain — so the decision graph and
+the entity graph are one connected graph. It is served via `GET /api/v1/graph`
+and visualized on the **Graph** page (React Flow). The AI copilot is graph-aware:
+retrieved chunks are matched to known entities, whose relationships are injected
+into the answer prompt.
+
+## Business Logic Layer
+
+Beyond *what* the knowledge base says, Kortex captures *why* — the decisions,
+policies, processes, and constraints that govern the application, each with its
+**rationale**. This is what separates business knowledge from raw knowledge.
+
+- **Extraction** — `pipelines/extraction/business_extractor.py` (Claude Haiku)
+  pulls `BusinessRule` records (`statement` = what, `rationale` = why, typed
+  `decision` / `policy` / `process` / `constraint` / `metric`) alongside entity
+  extraction during ingestion.
+- **Decision provenance** — a rule can `supersede` an earlier one; these chains
+  become `SUPERSEDES` edges in Neo4j (e.g. "OAuth supersedes API keys").
+- **Rule → entity links** — each rule is linked to the entities mentioned in its
+  source chunk (`BusinessRuleEntityLink`), synced as `GOVERNS` edges. This powers
+  multi-hop reasoning: *chunk → entity → governing rule*.
+- **Reasoning endpoint** — `POST /api/v1/reasoning/ask` retrieves chunks
+  (deliberately keeping conflicting ones), gathers the relevant business rules
+  (by provenance, keyword, **and** graph traversal) plus any open conflicts, and
+  asks Claude to **explain the business logic, cite the governing rules, and
+  explicitly surface contradictions** (preferring `active`/newer rules) rather
+  than silently picking a side. Returns the answer plus `cited_rules` and
+  `conflicts`.
 
 ## Multi-Agent Memory Layer
 
@@ -175,12 +208,14 @@ Postgres/Qdrant are unavailable.
 | Phase 1: Verity Core | ✅ Complete | 6-source ingestion → scoring → retrieval → eval |
 | Phase 2: Knowledge Graph + Observability | ✅ Complete | Neo4j graph + graph viz + observability dashboard + hallucination-risk scoring |
 | Phase 3: Agent Memory | ✅ Complete | Persistent + shared multi-agent memory (LangGraph orchestrator + knowledge + memory) |
-| Phase 4: Polish & Extend | 🚧 In progress | AI copilot, graph-aware chat, autonomous maintenance, drift detection, Notion connector |
+| Phase 4: Polish & Extend | ✅ Complete | AI copilot, graph-aware chat, autonomous maintenance, drift detection, Notion connector |
+| Phase 5: Business Logic Layer | 🚧 In progress | Business-rule extraction (+ rationale), `SUPERSEDES`/`GOVERNS` graph edges, business-logic reasoning endpoint, GitHub issue/PR ingestion, business-understanding eval metrics |
 
 ## Data Model
 
-7 SQLAlchemy 2.0 models (`apps/api/app/models/`): `Document`, `Chunk`,
-`Entity`, `EntityRelationship`, `Conflict`, `LineageRecord`, `AgentMemory`.
+9 SQLAlchemy 2.0 models (`apps/api/app/models/`): `Document`, `Chunk`,
+`Entity`, `EntityRelationship`, `Conflict`, `LineageRecord`, `AgentMemory`,
+`BusinessRule`, and `BusinessRuleEntityLink` (rule → entity `GOVERNS` link).
 Every chunk carries a `LineageRecord` (source + timestamp chain). See
 [docs/data_model.md](docs/data_model.md).
 
@@ -188,7 +223,7 @@ Every chunk carries a `LineageRecord` (source + timestamp chain). See
 
 - **API**: FastAPI + Celery (+ beat) + PostgreSQL + Redis
 - **Vector DB**: Qdrant
-- **Graph DB**: Neo4j (knowledge graph: entities + relationships)
+- **Graph DB**: Neo4j (knowledge graph: entities + relationships + business rules with `SUPERSEDES`/`GOVERNS` edges)
 - **Agents**: LangGraph multi-agent workflow + persistent memory store
 - **Connectors**: PyGithub, `slack_sdk`, Google API + OAuth2, `notion-client`
 - **LLM**: Claude (claude-sonnet-4-6 for eval, claude-haiku-4-5 for extraction/conflict)
@@ -209,7 +244,8 @@ make shell-api    # bash into API container
 make shell-db     # psql into PostgreSQL
 ```
 
-Test suite covers scoring, extraction, the agent memory store + workflow, the
-knowledge graph, hallucination risk, ingestion security, and each live
-connector (GitHub / Slack / Gmail). See [CLAUDE.md](CLAUDE.md) for the full
-command reference and architecture notes.
+Test suite covers scoring, extraction, business-rule extraction + reasoning, the
+rule → entity (`GOVERNS`) links, business-understanding eval scoring, the agent
+memory store + workflow, the knowledge graph, hallucination risk, ingestion
+security, and each live connector (GitHub code+issues / Slack / Gmail). See
+[CLAUDE.md](CLAUDE.md) for the full command reference and architecture notes.
