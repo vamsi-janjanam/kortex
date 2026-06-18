@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -47,6 +46,23 @@ Score the generated answer:
 
 Return ONLY JSON: {{"faithfulness": 0.0, "correctness": 0.0, "is_hallucinating": false}}"""
 
+BUSINESS_JUDGE_PROMPT = """You are an evaluation judge measuring BUSINESS UNDERSTANDING — \
+whether the answer explains the *why* (business logic / rationale), not just the bare fact.
+
+Question: {question}
+Reference answer: {reference_answer}
+Generated answer: {generated_answer}
+This question is known to involve contradictory/conflicting sources: {has_conflict}
+
+Score the generated answer:
+1. explains_rationale (0.0-1.0): Does it explain the reasoning, decision, policy, or "why" \
+behind the answer — not merely restate a fact?
+2. surfaces_conflict (true/false): If conflicting information is involved, does the answer \
+explicitly acknowledge the contradiction (vs. silently picking one side)? If no conflict is \
+involved, return false.
+
+Return ONLY JSON: {{"explains_rationale": 0.0, "surfaces_conflict": false}}"""
+
 
 @dataclass
 class QAPair:
@@ -68,6 +84,10 @@ class EvalResult:
     correctness: float
     is_hallucinating: bool
     mode: str
+    # Business-understanding metrics (does the answer explain the "why"?).
+    explains_rationale: float = 0.0
+    surfaces_conflict: bool = False
+    has_seeded_conflict: bool = False
 
 
 def load_qa_pairs() -> list[QAPair]:
@@ -156,6 +176,34 @@ def judge_answer(qa: QAPair, generated: str, chunks: list[dict], client: anthrop
         return {"faithfulness": 0.0, "correctness": 0.0, "is_hallucinating": True}
 
 
+def judge_business_understanding(
+    qa: QAPair, generated: str, client: anthropic.Anthropic, model: str
+) -> dict:
+    """Judge whether the answer explains the *why* and surfaces conflicts.
+
+    This is the business-understanding metric: it measures reasoning quality
+    (rationale + conflict-awareness) rather than bare fact retrieval. Parsing is
+    defensive and mirrors :func:`judge_answer`.
+    """
+    message = client.messages.create(
+        model=model,
+        max_tokens=256,
+        messages=[{"role": "user", "content": BUSINESS_JUDGE_PROMPT.format(
+            question=qa.question,
+            reference_answer=qa.reference_answer,
+            generated_answer=generated,
+            has_conflict=qa.has_seeded_conflict,
+        )}],
+    )
+    raw = message.content[0].text.strip()
+    try:
+        if raw.startswith("```"):
+            raw = raw.split("```")[1].lstrip("json").strip()
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"explains_rationale": 0.0, "surfaces_conflict": False}
+
+
 def run_eval(mode: Literal["raw", "cleaned"], settings, client: anthropic.Anthropic) -> list[EvalResult]:
     qa_pairs = load_qa_pairs()
     results = []
@@ -167,6 +215,7 @@ def run_eval(mode: Literal["raw", "cleaned"], settings, client: anthropic.Anthro
             chunks = retrieve_chunks(vector, settings, mode)
             answer = generate_answer(qa.question, chunks, client, settings.claude_model)
             scores = judge_answer(qa, answer, chunks, client, settings.claude_model)
+            biz = judge_business_understanding(qa, answer, client, settings.claude_model)
 
             results.append(EvalResult(
                 qa_id=qa.id,
@@ -178,6 +227,9 @@ def run_eval(mode: Literal["raw", "cleaned"], settings, client: anthropic.Anthro
                 correctness=scores.get("correctness", 0.0),
                 is_hallucinating=scores.get("is_hallucinating", False),
                 mode=mode,
+                explains_rationale=biz.get("explains_rationale", 0.0),
+                surfaces_conflict=biz.get("surfaces_conflict", False),
+                has_seeded_conflict=qa.has_seeded_conflict,
             ))
             print(f"    [{i}/{len(qa_pairs)}] {qa.id}: correctness={scores.get('correctness', 0):.2f} hallucinating={scores.get('is_hallucinating')}")
             time.sleep(0.5)  # rate limit courtesy
@@ -192,10 +244,19 @@ def print_comparison(raw_results: list[EvalResult], cleaned_results: list[EvalRe
         if not results:
             return {}
         n = len(results)
+        conflict_results = [r for r in results if r.has_seeded_conflict]
+        nc = len(conflict_results)
         return {
             "accuracy": round(sum(r.correctness for r in results) / n * 100, 1),
             "faithfulness": round(sum(r.faithfulness for r in results) / n * 100, 1),
             "hallucination_rate": round(sum(1 for r in results if r.is_hallucinating) / n * 100, 1),
+            "rationale": round(sum(r.explains_rationale for r in results) / n * 100, 1),
+            # Of the questions with a seeded conflict, how many did the answer surface?
+            "conflict_surfaced": (
+                round(sum(1 for r in conflict_results if r.surfaces_conflict) / nc * 100, 1)
+                if nc
+                else 0.0
+            ),
             "n": n,
         }
 
@@ -219,6 +280,8 @@ def print_comparison(raw_results: list[EvalResult], cleaned_results: list[EvalRe
     row("Retrieval Accuracy", "accuracy")
     row("Faithfulness", "faithfulness")
     row("Hallucination Rate", "hallucination_rate", higher_is_better=False)
+    row("Explains Rationale (why)", "rationale")
+    row("Conflicts Surfaced", "conflict_surfaced")
     print(f"  {'Questions evaluated':<28} {r.get('n', 0):>8} {c.get('n', 0):>10}")
     print("=" * 60)
 

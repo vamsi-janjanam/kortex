@@ -4,12 +4,19 @@ from sqlalchemy import select
 
 from app.celery_app import celery_app
 from app.database import SessionLocal
-from app.models import Chunk, Entity, EntityRelationship
+from app.models import (
+    BusinessRule,
+    BusinessRuleEntityLink,
+    Chunk,
+    Entity,
+    EntityRelationship,
+)
 
 
 @celery_app.task(name="extract_entities", bind=True, max_retries=3)
 def extract_entities_task(self, document_id: str):
     """Extract entities and relationships from a document's chunks and persist them."""
+    from pipelines.extraction.business_extractor import BusinessRuleExtractor
     from pipelines.extraction.entity_extractor import EntityExtractor
 
     db = SessionLocal()
@@ -81,6 +88,56 @@ def extract_entities_task(self, document_id: str):
             db.add(relationship)
             relationships_extracted += 1
 
+        rule_extractor = BusinessRuleExtractor()
+        seen_rule_names: set[str] = set()
+        business_rules_extracted = 0
+        seen_rule_entity_pairs: set[tuple[uuid.UUID, uuid.UUID]] = set()
+        rule_entity_links = 0
+
+        for chunk in chunks:
+            rule_result = rule_extractor.extract(chunk.text)
+            chunk_text_lower = chunk.text.lower()
+            for rule in rule_result.get("rules", []):
+                name = rule.get("name")
+                statement = rule.get("statement")
+                if not name or not statement:
+                    continue
+
+                key = name.lower()
+                if key in seen_rule_names:
+                    continue
+                seen_rule_names.add(key)
+
+                business_rule = BusinessRule(
+                    name=name,
+                    rule_type=rule.get("type", "decision"),
+                    statement=statement,
+                    rationale=(rule.get("rationale") or None),
+                    source_chunk_id=chunk.id,
+                    document_id=uuid.UUID(document_id),
+                    confidence=rule.get("confidence", 1.0),
+                )
+                db.add(business_rule)
+                db.flush()
+                business_rules_extracted += 1
+
+                # Link the rule to the entities mentioned in THIS chunk so
+                # reasoning can do chunk -> entity -> governing rule traversal.
+                for entity_name, entity_id in name_to_id.items():
+                    if entity_name not in chunk_text_lower:
+                        continue
+                    pair = (business_rule.id, entity_id)
+                    if pair in seen_rule_entity_pairs:
+                        continue
+                    seen_rule_entity_pairs.add(pair)
+                    db.add(
+                        BusinessRuleEntityLink(
+                            business_rule_id=business_rule.id,
+                            entity_id=entity_id,
+                        )
+                    )
+                    rule_entity_links += 1
+
         db.commit()
 
         from app.tasks.graph import sync_graph_task
@@ -91,6 +148,8 @@ def extract_entities_task(self, document_id: str):
             "document_id": document_id,
             "entities_extracted": entities_extracted,
             "relationships_extracted": relationships_extracted,
+            "business_rules_extracted": business_rules_extracted,
+            "rule_entity_links": rule_entity_links,
         }
     except Exception as exc:
         db.rollback()

@@ -123,3 +123,110 @@ def test_normalizes_github_url(monkeypatch, fake_repo):
 def test_invalid_source_raises():
     with pytest.raises(ValueError):
         GitHubConnector._normalize_source("not-a-repo")
+
+
+class _FakeComment:
+    def __init__(self, body):
+        self.body = body
+
+
+class _FakeIssue:
+    def __init__(self, number, title, body, state, *, is_pr=False, comments=()):
+        self.number = number
+        self.title = title
+        self.body = body
+        self.state = state
+        # PyGithub exposes a truthy ``pull_request`` attr on PRs.
+        self.pull_request = object() if is_pr else None
+        self._comments = list(comments)
+
+    def get_comments(self):
+        return self._comments
+
+
+class _FakeRepoWithIssues(_FakeRepo):
+    def __init__(self, contents, issues):
+        super().__init__(contents)
+        self._issues = issues
+
+    def get_issues(self, state=None):
+        return self._issues
+
+
+@pytest.fixture
+def fake_repo_with_issues(fake_repo):
+    issues = [
+        _FakeIssue(
+            7,
+            "Add OAuth support",
+            "We should switch to OAuth.",
+            "open",
+            is_pr=False,
+            comments=[_FakeComment("Agreed, API keys are insecure.")],
+        ),
+        _FakeIssue(
+            12,
+            "Implement OAuth login",
+            "This PR adds OAuth.",
+            "closed",
+            is_pr=True,
+            comments=[_FakeComment("LGTM, merging now.")],
+        ),
+    ]
+    return _FakeRepoWithIssues(fake_repo._contents, issues)
+
+
+def test_ingests_issues_and_pull_requests(monkeypatch, fake_repo_with_issues):
+    monkeypatch.setattr(settings, "github_token", "ghp_fake", raising=False)
+
+    class _FakeClient:
+        def get_repo(self, full_name):
+            return fake_repo_with_issues
+
+    monkeypatch.setattr(GitHubConnector, "_client", lambda self: _FakeClient())
+
+    chunks = GitHubConnector().ingest("octocat/hello")
+
+    discussion_chunks = [
+        c for c in chunks if c["metadata"].get("content_type") in {"issue", "pull_request"}
+    ]
+    assert discussion_chunks
+
+    for chunk in discussion_chunks:
+        assert set(chunk["metadata"].keys()) == {
+            "source",
+            "repo",
+            "content_type",
+            "number",
+            "title",
+            "state",
+        }
+        assert chunk["metadata"]["repo"] == "octocat/hello"
+
+    by_number = {c["metadata"]["number"]: c["metadata"] for c in discussion_chunks}
+    assert by_number[7]["content_type"] == "issue"
+    assert by_number[12]["content_type"] == "pull_request"
+
+    all_text = "\n".join(c["text"] for c in discussion_chunks)
+    assert "Agreed, API keys are insecure." in all_text
+    assert "LGTM, merging now." in all_text
+
+
+def test_existing_behavior_preserved_without_get_issues(monkeypatch, fake_repo):
+    # The plain _FakeRepo has no get_issues method, so the defensive guard in
+    # _ingest_issues must swallow the AttributeError and return only code chunks.
+    assert not hasattr(fake_repo, "get_issues")
+
+    monkeypatch.setattr(settings, "github_token", "ghp_fake", raising=False)
+    _install_fake_github(monkeypatch, fake_repo)
+
+    chunks = GitHubConnector().ingest("octocat/hello")
+
+    assert chunks
+    for chunk in chunks:
+        assert set(chunk["metadata"].keys()) == {
+            "source",
+            "repo",
+            "file_path",
+            "ref",
+        }

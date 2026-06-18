@@ -1,8 +1,12 @@
-"""GitHub source connector — ingests a repository's CODEBASE (source files).
+"""GitHub source connector — ingests a repository's CODEBASE and DISCUSSION.
 
 Uses PyGithub to fetch the default-branch git tree recursively and emits one
 ``RawChunk`` per split of each allowlisted text/code file. Binary, oversized,
 and non-text files are skipped.
+
+It also ingests the repository's issues and pull requests together with their
+comment threads — the place where design decisions and the "why" get argued —
+emitting one ``RawChunk`` per split of each combined discussion block.
 """
 
 from __future__ import annotations
@@ -55,6 +59,10 @@ _ALLOWED_EXTENSIONS = {
 
 # Skip files larger than ~1MB (decoded git blobs).
 _MAX_FILE_BYTES = 1_000_000
+
+# Caps to avoid runaway ingestion of issue/PR discussion threads.
+_MAX_ISSUES = 100
+_MAX_COMMENTS_PER_ISSUE = 50
 
 
 class GitHubConnector(BaseConnector):
@@ -166,5 +174,78 @@ class GitHubConnector(BaseConnector):
                         },
                     )
                 )
+
+        chunks.extend(self._ingest_issues(repo, source, full_name))
+
+        return chunks
+
+    def _ingest_issues(
+        self, repo, source: str, full_name: str
+    ) -> list[RawChunk]:
+        """Ingest issues and pull requests with their comment threads.
+
+        In the GitHub API, pull requests are returned as issues; a PR is
+        detected via a truthy ``pull_request`` attribute. Each issue/PR becomes
+        one combined text block (title + body + comments) that is split into one
+        ``RawChunk`` per piece.
+
+        Defensive: if ``repo.get_issues`` is missing or raises, returns ``[]``
+        so code-file ingestion is never broken.
+        """
+        chunks: list[RawChunk] = []
+        try:
+            issues = repo.get_issues(state="all")
+        except Exception:
+            return []
+
+        try:
+            for index, issue in enumerate(issues):
+                if index >= _MAX_ISSUES:
+                    break
+                try:
+                    is_pr = bool(getattr(issue, "pull_request", None))
+                    title = issue.title or ""
+                    body = issue.body or ""
+
+                    comment_bodies = []
+                    for comment_index, comment in enumerate(
+                        issue.get_comments()
+                    ):
+                        if comment_index >= _MAX_COMMENTS_PER_ISSUE:
+                            break
+                        comment_body = comment.body or ""
+                        if comment_body:
+                            comment_bodies.append(comment_body)
+
+                    if not title and not body and not comment_bodies:
+                        continue
+
+                    text = title + "\n\n" + body
+                    for comment_body in comment_bodies:
+                        text += "\n\n--- comment ---\n" + comment_body
+
+                    for piece in self._split_text(text):
+                        if not piece.strip():
+                            continue
+                        chunks.append(
+                            RawChunk(
+                                text=piece,
+                                metadata={
+                                    "source": source,
+                                    "repo": full_name,
+                                    "content_type": (
+                                        "pull_request" if is_pr else "issue"
+                                    ),
+                                    "number": issue.number,
+                                    "title": issue.title,
+                                    "state": issue.state,
+                                },
+                            )
+                        )
+                except Exception:
+                    # Skip a bad issue and continue with the rest.
+                    continue
+        except Exception:
+            return chunks
 
         return chunks
