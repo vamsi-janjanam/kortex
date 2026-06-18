@@ -14,9 +14,15 @@ build/
 htmlcov/
 .coverage
 
-# Environment
-.env.local
-.env.*.local
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+client_secret*.json
+token.json
 
 # Node
 node_modules/

@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # Database
+    # The embedded kortex:kortex creds are a LOCAL-DEV fallback only;
+    # production MUST override DATABASE_URL via env.
     database_url: str = "postgresql://kortex:kortex@localhost:5432/kortex"
 
     # Redis
@@ -17,7 +19,8 @@ class Settings(BaseSettings):
     # Neo4j
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "kortexgraph"
+    # No baked-in default: must be supplied via env in any non-local environment.
+    neo4j_password: str = ""
 
     # LLM
     anthropic_api_key: str = ""

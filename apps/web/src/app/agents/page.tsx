@@ -2,9 +2,6 @@
 import { useState } from "react";
 import { Bot, Brain, Sparkles, ListOrdered } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-
 interface MemoryRef {
   id: string;
   agent_role: string;
@@ -34,11 +31,9 @@ export default function AgentsPage() {
     setLoading(true);
     setRan(true);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (API_KEY) headers["X-API-Key"] = API_KEY;
-      const res = await fetch(`${API_URL}/api/v1/agents/query`, {
+      const res = await fetch(`/api/proxy/api/v1/agents/query`, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
