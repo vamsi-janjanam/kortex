@@ -19,9 +19,7 @@ class BusinessRuleEntityLink(Base):
 
     __tablename__ = "business_rule_entity_links"
     __table_args__ = (
-        UniqueConstraint(
-            "business_rule_id", "entity_id", name="uq_rule_entity_link"
-        ),
+        UniqueConstraint("business_rule_id", "entity_id", name="uq_rule_entity_link"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

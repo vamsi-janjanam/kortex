@@ -74,9 +74,7 @@ def _fetch_business_rules(
     if not conditions:
         return []
 
-    rows = db.execute(
-        select(BusinessRule).where(or_(*conditions))
-    ).scalars().all()
+    rows = db.execute(select(BusinessRule).where(or_(*conditions))).scalars().all()
 
     # De-dupe (a rule can match on multiple conditions) and cap.
     deduped: dict[uuid.UUID, BusinessRule] = {}
@@ -87,9 +85,7 @@ def _fetch_business_rules(
     return list(deduped.values())
 
 
-def _fetch_governed_rules(
-    db: Session, chunk_texts: list[str]
-) -> list[BusinessRule]:
+def _fetch_governed_rules(db: Session, chunk_texts: list[str]) -> list[BusinessRule]:
     """Multi-hop: chunk -> entity -> governing business rule.
 
     Substring-matches known entity names (from Postgres) against the retrieved
